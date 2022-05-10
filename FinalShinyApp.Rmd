@@ -1,0 +1,256 @@
+---
+title: "ShinyAppFinal"
+author: "Paige Steffan"
+date: "5/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(fpp3)
+library(shiny)
+library(shinydashboard)
+library(ggplot2)
+library(forecast)
+install.packages('rsconnect')
+library(rsconnect)
+options(rsconnect.max.bundle.size=31457280000)
+rsconnect::setAccountInfo(name='paigesteffanutk',
+			  token='18F409A043C2E51B71967C3FBB5C3FB2',
+			  secret='<SECRET>')
+deployApp() 
+rsconnect::deployApp('/Users/paigesteffan/Desktop/BAS 475/FinalShiny475/FinalShinyApp.Rmd')
+# seasonality plot 
+seas <- souvenirs %>% 
+    gg_season(Sales) +
+    labs(y= "Sales", title= "Seasonal Plot for Monthly Sales")
+
+# autocor plot 
+
+autocor <- souvenirs %>%
+    ACF(Sales)%>%
+    autoplot() + labs(title= "Autocorrelation Plot")
+
+#decomp
+decomp1 <- souvenirs %>%
+    model(
+        classical_decomposition(Sales, type = "additive")
+    ) %>%
+    components() %>%
+    autoplot() +
+    labs(title = "Classical additive decomposition of Sales for a Souvenir Shop")
+
+decomp2 <-souvenirs %>%
+    model(
+        classical_decomposition(Sales, type = 'multiplicative')
+    ) %>%
+    components() %>%
+    autoplot() +
+    labs(title = "Multiplicative additive decomposition of Sales for a Souvenir Shop")
+
+train <- souvenirs %>%
+    filter_index("1987 Jan" ~ "1993 Dec")
+sale <- souvenirs %>%
+    filter_index("1987 Jan" ~ "1993 Dec") %>%
+    select(Sales)
+
+
+ui <- dashboardPage(skin= "purple",
+                    dashboardHeader(title= "Final Shiny App"),
+                    dashboardSidebar(
+                        sidebarMenu(
+                            menuItem("Home Page", tabName = "x", icon=icon("star")),
+                            menuItem("Time Plot", tabName = "timeplot", icon=icon("star")), 
+                            menuItem("Pick Your Graph", tabName = "select", icon=icon("star")),
+                            menuItem("Additional Feature", tabName = "additional", icon=icon("star")), 
+                            menuItem("Naive Model", tabName = "naive", icon=icon("star")),
+                            menuItem("Seasonal Naive", tabName = "snaive", icon=icon("star")),
+                            menuItem("Mean Model", tabName = "mean", icon=icon("star")),
+                            menuItem("Drift Model", tabName = "drift", icon=icon("star")),
+                            menuItem("Holt's", tabName = "holt", icon=icon("star")),
+                            menuItem("Auto ARIMA", tabName = "aa", icon=icon("star")),
+                            menuItem("ARIMA", tabName = "ab", icon=icon("star")), 
+                            menuItem("Holt-Winter", tabName = "a3", icon=icon("star"))
+                        )),
+                    
+                    
+                    dashboardBody(skin = "blue",
+                                  tabItems(
+                                      tabItem(tabName = "x", 
+                                              h3(strong("Welcome to my Final Shiny App.")), 
+                                              h2("In my app you will see examples of all the things we have learned his semester.
+                     Using these models will help us create predictions for the shop."), 
+                                              imageOutput("myimage")), 
+                                      tabItem(tabName = "timeplot",
+                                              h3(strong("Time Plot for Monthly Sales", style = "font-size:16px;")), 
+                                              h2("This app will be used to display a time plot to show the Montly Sales at a
+       souvenier shop at a beach resort in Queensland, Australia", style = "font-size:14px;"),
+                                              
+                                              plotOutput("plot"), 
+                                              
+                                              h2("Interpretation: Trend: If you refer to the time series plot, you can see that there is an increase 
+       in the data from when it was collected.", style = "font-size:12px;"),
+                                              h2("Interpretation: Seasonality: Looking at the seasonality of this data, you can see that it increases and has a 
+       pretty dramatic spike starting in the 1990s. This could be due to a major spike of increased prices and 
+       inflation in the 1990s, causing the sales to be more.", style = "font-size:12px;")),
+                                      tabItem(tabName = "select", 
+                                              
+                                              h3(strong("Monthly Sales for Souviner Shop")),
+                                              h2("This app will be used to display a  plot of users choice to show the Montly Sales at a
+       souvenier shop at a beach resort in Queensland, Australia", style = "font-size:12px;"),
+                                              br(),
+                                              h2("Instructions: To change the viewing of the graphs, please select dropdown menu. The dropdown 
+     contains 4 viewing options; Seasonality, Autocorrection, Additive Decomposition, and 
+     Multiplicative Decomposition. ", style = "font-size:12px;"), 
+                                              
+                                              selectInput("plotchoice", "Pick a graph to view: ",
+                                                          choices= list("Seasonailty"= "Seasonailty",
+                                                                        "Autocorrelation"= "Autocorrelation",
+                                                                        "Additive Decomposition"= "Additive Decomposition",
+                                                                        "Multiplicative Decomposition"= "Multiplicative Decomposition"),
+                                                          selected = "Seasonality"),
+                                              
+                                              plotOutput("plot2"), 
+                                              
+                                              h2("Interpretation: Seasonality Plot: When selecting viewing for the seasonality plot, you can see the trends
+     most sales were in the 1990s, the can be justified by a price increase during these times. ", style = "font-size:12px;"), 
+                                              h2("Interpretation: Autocorrelation Plot: When selecting viewing for the Autocorrelation plot, you can see 
+     r12 is extremely larger than all the other lags. This is most likely not due to the seasonality of the sales 
+     for the souviner shop. The dashed blue lines here show that the correlations are signifacntly different 
+     from zero. ", style = "font-size:12px;"), 
+                                              h2("Interpretation: Additive Decomposition Plot: When selecting viewing for the Additive Decomposition plot, you can see
+     random is the biggest factor. This means that random factors are a major component in the data. 
+     It is also clear that the seasonality stays pretty consistent.", style = "font-size:12px;"), 
+                                              h2("Interpretation: Multiplicative Decomposition Plot: When selecting viewing for the Multiplicative Decomposition plot, you can see that there is a linear increasing trend, 
+     and that trend is the largest factor in this dataset. We also see that seasonality continues to stay pretty consistent." , style= "font-size:12px;")
+                                      ), 
+                                      
+                                      tabItem(tabName = "additional",
+                                              h3("Year Selection for Sales at the Souvenir Shop"),
+                                              h2("Instructions: Please Select a Certain Month to see the Total Sales for that Time Period", 
+                                                 style = "font-size:14px;"),
+                                              h2("Interpret: This dashboard and app are used to be able to pull a certain month from the dropdown
+                    bar and see what their total sales were for a certain month and year. This is useful for when needing 
+                    basic information regarding the sales of the Souviner shop.", 
+                                                 style = "font-size:12px;"),
+                                              selectInput("order", "Select a Year to Determine Sales: ", choices= souvenirs$Month),
+                                              plotOutput("mvalue2"), 
+                                              h3("Total Sales for Selection from DropDown Menu:"),
+                                              textOutput("mvalue")),
+                                      
+                                      tabItem(tabName = "naive",
+                                              h3("Naive Model for Sales at a Souvier Shop"), 
+                                              plotOutput("nav")),
+                                      
+                                      tabItem(tabName = "snaive",
+                                              h3("Seasonal Naive Model for a Souviner Shop"), 
+                                              plotOutput('snav')),
+                                      
+                                      tabItem(tabName = "mean", 
+                                              h3("Mean Model for Sales at a Souvier Shop"), 
+                                              plotOutput("men")),
+                                      
+                                      tabItem(tabName = "drift", 
+                                              h3("Drift Model for Sales at a Souvier Shop"), 
+                                              plotOutput("dr")), 
+                                      
+                                      tabItem(tabName = "holt", 
+                                              h3("Holt's Linear Trend Method"),
+                                              plotOutput("hi")),
+                                      
+                                      tabItem(tabName = "aa", 
+                                              h3("Auto ARIMA for Sales at a Souvier Shop"),
+                                              plotOutput("auto")
+                                              
+                                      ), 
+                                      tabItem(tabName = "ab", 
+                                              h3("ARIMA Model"),
+                                              plotOutput("abb"), 
+                                              tableOutput("table")),
+                                      
+                                      tabItem(tabName = "a3", 
+                                              h3("Holt's / Winter Method"), 
+                                              plotOutput("ouch"))
+                                  )
+                                  
+                    ))
+
+
+server <- function(input, output) {
+    output$plot <- renderPlot({
+        souvenirs %>% autoplot(Sales)+labs(title = "Monthly Sales",y = "Sales", x = "Month") })
+    
+    output$myimage  <- renderImage({return(list(src = "/Users/paigesteffan/Desktop/BAS 475/FinalShiny475/myimage.png",contentType = "image/png",alt = "x"))
+    }, deleteFile = FALSE)
+    
+    output$plot2 <- renderPlot({
+        if(input$plotchoice == "Seasonailty"){
+            seas}
+        else if(input$plotchoice == "Autocorrelation"){
+            autocor}
+        else if(input$plotchoice == "Additive Decomposition"){
+            decomp1}
+        else if(input$plotchoice == "Multiplicative Decomposition"){
+            decomp2}
+        
+    })
+    
+    
+    output$plotz <- renderText(input$order)
+    
+    output$mvalue <- renderText(
+        as.character(souvenirs$Sales[souvenirs$Month== yearmonth(input$order)])
+        
+    )
+    
+    output$mvalue2 <- renderPlot({
+        souvenirs %>% autoplot(Sales)+
+            labs(title = "Monthly Sales",
+                 y = "Sales", x = "Month") })
+    
+    output$nav <- renderPlot({
+        sale %>% model(NAIVE(Sales)) %>%  forecast(h= 12) -> fit2
+        fit2 %>%
+            autoplot(sale)+labs(y = "Sales", x = "Month")
+    })
+    
+    output$snav <- renderPlot({sale %>% model(SNAIVE(Sales)) %>%  forecast(h= 12) -> fit1
+        fit1 %>%
+            autoplot(sale)+labs(y = "Sales", x = "Month")}) 
+    
+    output$men <- renderPlot({sale %>% model(MEAN(Sales)) %>%  forecast(h= 12) -> fit
+        fit %>%
+            autoplot(sale)+labs(y = "Sales", x = "Month")
+    })
+    
+    output$dr <- renderPlot({rwf(souvenirs$Sales, h= 12, drift=TRUE) %>% autoplot()+labs(y = "Sales", x = "Month")})
+    
+    output$hi <- renderPlot({eTS <- souvenirs %>% model(ETS(Sales))
+    fc <- eTS %>% forecast(h= "4 years")
+    fc %>% autoplot(souvenirs)})
+    
+    output$auto <- renderPlot({af <- auto.arima(souvenirs$Sales)
+    autoplot(forecast(af, h=6))+labs(y = "Sales", x = "Month")
+    })
+    
+    output$abb <- renderPlot({a <- souvenirs %>% 
+        model(ARIMA(Sales))
+    report(a)
+    a %>% forecast(h=6)%>%autoplot(souvenirs)
+    a2 <- souvenirs %>%
+        model(arima111= ARIMA(Sales ~ pdq(1,1,1)))
+    
+    a2 %>% forecast(h=6)%>%autoplot(souvenirs)+labs(y = "Sales", x = "Month")
+    })
+    
+    output$table <- renderPrint({box("AIC=1395.38   AICc=1395.98   BIC=1404.3")})
+    
+    
+    output$ouch <- renderPlot({x <- souvenirs %>% index_by(Month)
+    x %>% model(
+        hw = ETS(Sales))%>%
+        forecast(h = "2 years") %>%
+        autoplot(x)+labs(y = "Sales", x = "Month")})
+}
+
+shinyApp(ui = ui, server = server)
